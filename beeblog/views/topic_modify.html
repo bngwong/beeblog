@@ -1,0 +1,33 @@
+{{template "header"}}
+    <title>Topic Add my beegblog</title>
+  </head>
+  <body>
+    <div class="navbar navbar-default navbar-fixed-top">
+      <div class = "container">
+         {{template "navbar" .}}
+        </div>
+    </div>   
+    <div class="container">
+      <h3>topic modify</h3>
+      <h1>Topic Modify</h1>
+      <form method="post" action="/topic">
+        <input type="hidden" name="tid" value="{{.Tid}}"></input>
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" name="title" class="form-control" value="{{.Topic.Title}}"></input>
+        </div>
+        <div>
+          <label>Category</label>
+          <input name="category" class="form-control" value="{{.Topic.Category}}"></input>
+        </div>
+        <div>
+          <label>Content</label>
+          <textarea name="content" cols="30" rows="10" class="form-control">{{.Topic.Content}}</textarea>
+        </div>
+        <button type="submit" class="btn btn-default">Modify Topic</button>
+      </form>
+    </div>
+    <script type="text/javascript" src="http://cnd.staticfile.org/jquery/2.0.3/jquery.min.js"></script>
+    <script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
+  </body>
+</html>
