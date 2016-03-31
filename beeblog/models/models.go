@@ -339,7 +339,10 @@ func ModifyTopic(tid, title, category, content string) error {
 
 	topic := &Topic{Id: tidnum}
 
-	if o.Read(topic) == nil {
+	var oldcate = ""
+	err = o.Read(topic)
+	if err == nil {
+		oldcate = topic.Category
 		topic.Title = title
 		topic.Category = category
 		topic.Content = content
@@ -347,5 +350,49 @@ func ModifyTopic(tid, title, category, content string) error {
 		o.Update(topic)
 	}
 
+	/* when category title changed,update category info*/
+
+	if oldcate == category {
+		return nil
+	}
+
+	cate := new(Category)
+	topics := make([]*Topic, 0)
+	qst := o.QueryTable("topic")
+	qsc := o.QueryTable("category")
+	_, err = qst.Filter("category", oldcate).All(&topics)
+
+	if err == nil {
+		err = qsc.Filter("title", oldcate).One(cate)
+		if err == nil {
+			cate.TopicCount = int64(len(topics))
+			_, err = o.Update(cate)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	cate = new(Category)
+	topics = make([]*Topic, 0)
+	_, err = qst.Filter("category", category).All(&topics)
+	if err == nil {
+		err = qsc.Filter("title", category).One(cate)
+		cate.TopicCount = int64(len(topics))
+		if err != nil {
+			cate.Created = time.Now()
+			cate.TopicTime = time.Now()
+			cate.Title = category
+			_, err = o.Insert(cate)
+			if err != nil {
+				return err
+			}
+		} else {
+			_, err = o.Update(cate)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
