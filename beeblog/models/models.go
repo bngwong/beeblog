@@ -59,6 +59,10 @@ func RegisterDB() {
 	orm.RegisterDriver(_SQLITE3_DRIVER, orm.DRSqlite)
 	orm.RegisterDataBase("default", _SQLITE3_DRIVER, _DB_NAME, 10)
 }
+
+/*
+ * add one reply
+ */
 func AddComment(tid, nickname, content string) error {
 	tidNum, err := strconv.ParseInt(tid, 10, 64)
 	if err != nil {
@@ -72,12 +76,13 @@ func AddComment(tid, nickname, content string) error {
 	comment.Created = time.Now()
 
 	o := orm.NewOrm()
-
+	/*insert a reply*/
 	_, err = o.Insert(comment)
 	if err != nil {
 		return err
 	}
 
+	/* update topic reply count */
 	topic := new(Topic)
 	qs := o.QueryTable("topic")
 	err = qs.Filter("Id", tid).One(topic)
@@ -94,6 +99,10 @@ func AddComment(tid, nickname, content string) error {
 
 	return nil
 }
+
+/*
+ * add one topic
+ */
 func AddTopic(title, category, content string) error {
 	o := orm.NewOrm()
 
@@ -117,6 +126,7 @@ func AddTopic(title, category, content string) error {
 	cate := new(Category)
 	cate.Title = category
 
+	/* update topic count for this category */
 	qs := o.QueryTable("category")
 	err = qs.Filter("title", category).One(cate)
 	cate.TopicCount++
@@ -126,7 +136,7 @@ func AddTopic(title, category, content string) error {
 		if err != nil {
 			return err
 		}
-	} else {
+	} else { /* if category does not exist,insert a new category */
 		cate.Created = time.Now()
 		cate.TopicTime = time.Now()
 		_, err = o.Insert(cate)
@@ -137,8 +147,11 @@ func AddTopic(title, category, content string) error {
 
 	return nil
 }
+
+/*
+ * add one category
+ */
 func AddCategory(cname string) error {
-	//fmt.Println(cname)
 	o := orm.NewOrm()
 	cate := new(Category)
 	cate.Title = cname
@@ -151,7 +164,7 @@ func AddCategory(cname string) error {
 	if err == nil {
 		return err
 	}
-
+	/* if category does not exist,insert a new category */
 	_, err = o.Insert(cate)
 	if err != nil {
 		return err
@@ -159,6 +172,10 @@ func AddCategory(cname string) error {
 
 	return nil
 }
+
+/*
+ * delete one reply
+ */
 func DeleteComment(tid, rid string) error {
 	ridNum, err := strconv.ParseInt(rid, 10, 64)
 	if err != nil {
@@ -169,6 +186,7 @@ func DeleteComment(tid, rid string) error {
 	comment.Id = ridNum
 
 	o := orm.NewOrm()
+	/* delete one reply */
 	_, err = o.Delete(comment)
 	if err != nil {
 		return err
@@ -181,7 +199,7 @@ func DeleteComment(tid, rid string) error {
 		return err
 	}
 	topic.ReplyCount--
-
+	/* -- topic reply count  */
 	_, err = o.Update(topic)
 	if err != nil {
 		return err
@@ -189,6 +207,10 @@ func DeleteComment(tid, rid string) error {
 
 	return nil
 }
+
+/*
+ * delete one topic
+ */
 func DeleteTopic(tid string) error {
 	tidNum, err := strconv.ParseInt(tid, 10, 64)
 	if err != nil {
@@ -201,6 +223,10 @@ func DeleteTopic(tid string) error {
 
 	return err
 }
+
+/*
+ * delete one category
+ */
 func DeleteCategory(id string) error {
 	cid, err := strconv.ParseInt(id, 10, 64)
 	fmt.Println("DeleteCategory")
@@ -215,6 +241,10 @@ func DeleteCategory(id string) error {
 
 	return err
 }
+
+/*
+ * get all topics
+ */
 func GetAllTopics(category string, isDesc bool) ([]*Topic, error) {
 	o := orm.NewOrm()
 
@@ -222,6 +252,7 @@ func GetAllTopics(category string, isDesc bool) ([]*Topic, error) {
 
 	qs := o.QueryTable("topic")
 	var err error
+	/*get all topics which category title is var category,if var category is "" get all topics*/
 	if len(category) != 0 {
 		if isDesc {
 			_, err = qs.Filter("Category", category).OrderBy("-created").All(&topics)
@@ -239,6 +270,9 @@ func GetAllTopics(category string, isDesc bool) ([]*Topic, error) {
 	return topics, err
 }
 
+/*
+ * get all replys for a topic
+ */
 func GetComments(tid string) ([]*Comment, error) {
 	tidNum, err := strconv.ParseInt(tid, 10, 64)
 	if err != nil {
@@ -253,6 +287,10 @@ func GetComments(tid string) ([]*Comment, error) {
 
 	return comments, err
 }
+
+/*
+ * get all categories
+ */
 func GetAllCategories() ([]*Category, error) {
 	o := orm.NewOrm()
 
@@ -263,6 +301,10 @@ func GetAllCategories() ([]*Category, error) {
 
 	return cates, err
 }
+
+/*
+ * get one topic
+ */
 func GetTopic(tid string) (*Topic, error) {
 	tidNum, err := strconv.ParseInt(tid, 10, 64)
 	if err != nil {
@@ -284,6 +326,10 @@ func GetTopic(tid string) (*Topic, error) {
 
 	return topic, err
 }
+
+/*
+ * modify one topic
+ */
 func ModifyTopic(tid, title, category, content string) error {
 	tidnum, err := strconv.ParseInt(tid, 10, 64)
 	if err != nil {
@@ -293,12 +339,43 @@ func ModifyTopic(tid, title, category, content string) error {
 
 	topic := &Topic{Id: tidnum}
 
+	var equal = false
 	if o.Read(topic) == nil {
+		if topic.Category == category {
+			equal = true
+		}
 		topic.Title = title
 		topic.Category = category
 		topic.Content = content
 		topic.Updated = time.Now()
 		o.Update(topic)
 	}
+
+	/* when category title changed,update category info*/
+	if category == "" || equal {
+		return nil
+	}
+
+	cate := new(Category)
+	cate.Title = category
+
+	qs := o.QueryTable("category")
+	err = qs.Filter("title", category).One(cate)
+	cate.TopicCount++
+
+	if err == nil {
+		_, err = o.Update(cate)
+		if err != nil {
+			return err
+		}
+	} else { /* category does not exist,insert a new one */
+		cate.Created = time.Now()
+		cate.TopicTime = time.Now()
+		_, err = o.Insert(cate)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
