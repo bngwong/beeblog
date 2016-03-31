@@ -339,57 +339,12 @@ func ModifyTopic(tid, title, category, content string) error {
 
 	topic := &Topic{Id: tidnum}
 
-	var equal = false
-	var oldcate
 	if o.Read(topic) == nil {
-		if topic.Category == category {
-			equal = true
-		} else {
-
-		}
 		topic.Title = title
-		oldcate = topic.Category
 		topic.Category = category
 		topic.Content = content
 		topic.Updated = time.Now()
 		o.Update(topic)
-	}
-
-	/* when category title changed,update category info*/
-	if category == "" || equal {
-		return nil
-	}
-
-	cate := new(Category)
-	cate.Title = category
-              /* old category topic count -- */
-	qs := o.QueryTable("category")
-	err = qs.Filter("title", oldcate).One(cate)
-	if err == nil {
-		cate.TopicCount--
-		_, err = o.Update(cate)
-		if err != nil {
-			return err
-		}
-	} else{
-		return err
-	}
-             /* new category topic count ++ */
-	err = qs.Filter("title", category).One(cate)
-	cate.TopicCount++
-
-	if err == nil {
-		_, err = o.Update(cate)
-		if err != nil {
-			return err
-		}
-	} else { /* category does not exist,insert a new one */
-		cate.Created = time.Now()
-		cate.TopicTime = time.Now()
-		_, err = o.Insert(cate)
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
